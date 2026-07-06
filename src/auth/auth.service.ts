@@ -77,6 +77,15 @@ export class AuthService {
     return { ...tokens, user: toPublicUser(user) };
   }
 
+  async getProfile(userId: string): Promise<PublicUser> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User no longer exists');
+    }
+
+    return toPublicUser(user);
+  }
+
   private hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, SALT_ROUNDS);
   }
