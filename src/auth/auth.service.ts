@@ -1,10 +1,18 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PublicUser, toPublicUser, UsersService } from '../users/users.service';
 
 const SALT_ROUNDS = 12;
+
+// Compared against for unknown usernames so login takes the same time whether
+// the user exists or not — avoids leaking which check failed.
+const DUMMY_HASH = bcrypt.hashSync('unused-dummy-password', SALT_ROUNDS);
 
 export interface JwtPayload {
   sub: string;
@@ -14,6 +22,10 @@ export interface JwtPayload {
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
+}
+
+export interface LoginResult extends TokenPair {
+  user: PublicUser;
 }
 
 @Injectable()
@@ -40,6 +52,29 @@ export class AuthService {
     });
 
     return toPublicUser(user);
+  }
+
+  async login(input: {
+    username: string;
+    password: string;
+  }): Promise<LoginResult> {
+    const user = await this.usersService.findByUsername(input.username);
+
+    // Always run a compare (dummy hash when the user is unknown) and fail
+    // identically for unknown username and wrong password.
+    const passwordMatches = await this.comparePassword(
+      input.password,
+      user?.passwordHash ?? DUMMY_HASH,
+    );
+
+    if (!user || !passwordMatches) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const tokens = await this.issueTokens(user.id, user.username);
+    await this.storeRefreshHash(user.id, tokens.refreshToken);
+
+    return { ...tokens, user: toPublicUser(user) };
   }
 
   private hashPassword(password: string): Promise<string> {
