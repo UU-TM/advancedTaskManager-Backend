@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { UsersService } from '../users/users.service';
+import { PublicUser, toPublicUser, UsersService } from '../users/users.service';
 
 const SALT_ROUNDS = 12;
 
@@ -23,6 +23,24 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  async register(input: {
+    username: string;
+    password: string;
+  }): Promise<PublicUser> {
+    const existing = await this.usersService.findByUsername(input.username);
+    if (existing) {
+      throw new ConflictException('Username already taken');
+    }
+
+    const passwordHash = await this.hashPassword(input.password);
+    const user = await this.usersService.create({
+      username: input.username,
+      passwordHash,
+    });
+
+    return toPublicUser(user);
+  }
 
   private hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, SALT_ROUNDS);
