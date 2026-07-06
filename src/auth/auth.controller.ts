@@ -48,4 +48,13 @@ export class AuthController {
   refresh(@CurrentUser() user: RefreshTokenUser, @Body() _dto: RefreshDto) {
     return this.authService.refresh(user.userId, user.refreshToken);
   }
+
+  @Post('logout')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Logged out')
+  async logout(@CurrentUser() user: AuthenticatedUser) {
+    await this.authService.logout(user.userId);
+    return {};
+  }
 }

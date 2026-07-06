@@ -10,8 +10,6 @@ import { PublicUser, toPublicUser, UsersService } from '../users/users.service';
 
 const SALT_ROUNDS = 12;
 
-// Compared against for unknown usernames so login takes the same time whether
-// the user exists or not — avoids leaking which check failed.
 const DUMMY_HASH = bcrypt.hashSync('unused-dummy-password', SALT_ROUNDS);
 
 export interface JwtPayload {
@@ -60,8 +58,6 @@ export class AuthService {
   }): Promise<LoginResult> {
     const user = await this.usersService.findByUsername(input.username);
 
-    // Always run a compare (dummy hash when the user is unknown) and fail
-    // identically for unknown username and wrong password.
     const passwordMatches = await this.comparePassword(
       input.password,
       user?.passwordHash ?? DUMMY_HASH,
@@ -92,7 +88,6 @@ export class AuthService {
   ): Promise<TokenPair> {
     const user = await this.usersService.findById(userId);
 
-    // No stored hash means logged out (or never issued) — reject.
     if (!user || !user.refreshTokenHash) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -105,12 +100,14 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // Rotate: issue a new pair and overwrite the stored hash, so the old
-    // refresh token can never be replayed.
     const tokens = await this.issueTokens(user.id, user.username);
     await this.storeRefreshHash(user.id, tokens.refreshToken);
 
     return tokens;
+  }
+
+  async logout(userId: string): Promise<void> {
+    await this.usersService.setRefreshTokenHash(userId, null);
   }
 
   private hashPassword(password: string): Promise<string> {
