@@ -10,9 +10,12 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import type { AuthenticatedUser } from './strategies/jwt-access.strategy';
+import type { RefreshTokenUser } from './strategies/jwt-refresh.strategy';
 
 @Controller('auth')
 export class AuthController {
@@ -36,5 +39,13 @@ export class AuthController {
   @ResponseMessage('User profile retrieved')
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getProfile(user.userId);
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  @UseGuards(JwtRefreshGuard)
+  @ResponseMessage('Token refreshed')
+  refresh(@CurrentUser() user: RefreshTokenUser, @Body() _dto: RefreshDto) {
+    return this.authService.refresh(user.userId, user.refreshToken);
   }
 }

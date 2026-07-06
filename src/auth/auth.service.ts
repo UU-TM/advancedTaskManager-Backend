@@ -86,6 +86,33 @@ export class AuthService {
     return toPublicUser(user);
   }
 
+  async refresh(
+    userId: string,
+    presentedRefreshToken: string,
+  ): Promise<TokenPair> {
+    const user = await this.usersService.findById(userId);
+
+    // No stored hash means logged out (or never issued) — reject.
+    if (!user || !user.refreshTokenHash) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const matches = await this.comparePassword(
+      presentedRefreshToken,
+      user.refreshTokenHash,
+    );
+    if (!matches) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    // Rotate: issue a new pair and overwrite the stored hash, so the old
+    // refresh token can never be replayed.
+    const tokens = await this.issueTokens(user.id, user.username);
+    await this.storeRefreshHash(user.id, tokens.refreshToken);
+
+    return tokens;
+  }
+
   private hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, SALT_ROUNDS);
   }
