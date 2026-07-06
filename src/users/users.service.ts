@@ -1,0 +1,35 @@
+import { Injectable } from '@nestjs/common';
+import { User } from '../generated/prisma/client';
+import { UsersRepository } from './users.repository';
+
+/** Shape safe to expose to clients — never includes any hash. */
+export interface PublicUser {
+  id: string;
+  username: string;
+}
+
+/** Single source of truth for the client-facing user shape. */
+export function toPublicUser(user: User): PublicUser {
+  return { id: user.id, username: user.username };
+}
+
+@Injectable()
+export class UsersService {
+  constructor(private readonly usersRepository: UsersRepository) {}
+
+  create(data: { username: string; passwordHash: string }): Promise<User> {
+    return this.usersRepository.create(data);
+  }
+
+  findByUsername(username: string): Promise<User | null> {
+    return this.usersRepository.findByUsername(username);
+  }
+
+  findById(id: string): Promise<User | null> {
+    return this.usersRepository.findById(id);
+  }
+
+  setRefreshTokenHash(userId: string, hash: string | null): Promise<User> {
+    return this.usersRepository.setRefreshTokenHash(userId, hash);
+  }
+}
