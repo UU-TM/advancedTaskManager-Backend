@@ -2,13 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { User } from '../generated/prisma/client';
 import { UsersRepository } from './users.repository';
 
-/** Shape safe to expose to clients — never includes any hash. */
 export interface PublicUser {
   id: string;
   username: string;
 }
 
-/** Single source of truth for the client-facing user shape. */
 export function toPublicUser(user: User): PublicUser {
   return { id: user.id, username: user.username };
 }
