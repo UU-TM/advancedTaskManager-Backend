@@ -1,15 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { User } from '../generated/prisma/client';
+import { User } from '../generated/prisma-client/client';
 import { UsersRepository } from './users.repository';
-
-export interface PublicUser {
-  id: string;
-  username: string;
-}
-
-export function toPublicUser(user: User): PublicUser {
-  return { id: user.id, username: user.username };
-}
 
 @Injectable()
 export class UsersService {

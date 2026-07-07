@@ -6,7 +6,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { PublicUser, toPublicUser, UsersService } from '../users/users.service';
+import { PublicUser, toPublicUser } from '../users/user.mapper';
+import { UsersService } from '../users/users.service';
 
 const SALT_ROUNDS = 12;
 

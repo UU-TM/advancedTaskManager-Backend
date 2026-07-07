@@ -1,12 +1,29 @@
 generator client {
   provider     = "prisma-client"
-  output       = "../src/generated/prisma"
+  output       = "../src/generated/prisma-client"
   runtime      = "nodejs"
   moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum WorkspaceRole {
+  ADMIN
+  MEMBER
+}
+
+enum BoardRole {
+  VIEWER
+  EDITOR
+}
+
+enum CardPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 model User {
@@ -17,5 +34,105 @@ model User {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  ownedWorkspaces       Workspace[]       @relation("WorkspaceOwner")
+  workspaceMemberships  WorkspaceMember[]
+  boardMemberships      BoardMember[]
+  cardAssignments       CardAssignee[]
+
   @@index([username])
+}
+
+model Workspace {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  ownerId   String   @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members WorkspaceMember[]
+  boards  Board[]
+
+  @@index([ownerId])
+}
+
+model WorkspaceMember {
+  workspaceId String        @db.Uuid
+  userId      String        @db.Uuid
+  role        WorkspaceRole
+  createdAt   DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, userId])
+  @@index([userId])
+}
+
+model Board {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members   BoardMember[]
+  columns   Column[]
+
+  @@index([workspaceId])
+}
+
+model BoardMember {
+  boardId   String    @db.Uuid
+  userId    String    @db.Uuid
+  role      BoardRole
+  createdAt DateTime  @default(now())
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([boardId, userId])
+  @@index([userId])
+}
+
+model Column {
+  id       String @id @default(uuid()) @db.Uuid
+  boardId  String @db.Uuid
+  title    String
+  position Float
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards Card[]
+
+  @@index([boardId, position])
+}
+
+model Card {
+  id          String        @id @default(uuid()) @db.Uuid
+  columnId    String        @db.Uuid
+  title       String
+  description String?
+  createdAt   DateTime      @default(now())
+  dueDate     DateTime?
+  priority    CardPriority?
+  category    String?
+  position    Float
+
+  column    Column         @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  assignees CardAssignee[]
+
+  @@index([columnId, position])
+}
+
+model CardAssignee {
+  cardId    String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
 }
